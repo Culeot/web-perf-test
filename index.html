@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>设备性能测试 · 30 秒浏览器体检</title>
+<meta name="description" content="在线检测手机、平板、电脑的浏览器性能:CPU、渲染帧率、网页流畅度,生成设备性能分级和前端定制优化建议。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='7' fill='%230e1514'/%3E%3Cpath d='M10 22V10h4v12h-4zm8 0V10h4v12h-4z' fill='%232dd4bf'/%3E%3C/svg%3E">
+<style>
+/* ============ 基础 ============ */
+:root{
+  --bg:#0a0f0e;
+  --bg2:#0e1514;
+  --panel:#121b19;
+  --panel2:#16211f;
+  --line:rgba(45,212,191,.14);
+  --line2:rgba(255,255,255,.06);
+  --text:#e6f2ef;
+  --muted:#8aa39e;
+  --dim:#5d736e;
+  --accent:#2dd4bf;
+  --accent-soft:rgba(45,212,191,.12);
+  --ok:#34d399;
+  --warn:#fbbf24;
+  --bad:#f87171;
+  --r-sm:10px;
+  --r-md:16px;
+  --r-lg:22px;
+  --mono:ui-monospace,"Cascadia Code","JetBrains Mono",Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","HarmonicOS Sans SC","MiSans","Microsoft YaHei",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  line-height:1.6;
+  min-height:100dvh;
+  overflow-x:hidden;
+}
+/* 背景微光 */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(45,212,191,.08), transparent 60%),
+    radial-gradient(700px 400px at -10% 30%, rgba(45,212,191,.05), transparent 60%),
+    radial-gradient(600px 600px at 50% 110%, rgba(45,212,191,.04), transparent 60%);
+}
+::selection{background:rgba(45,212,191,.28)}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit}
+.hidden{display:none!important}
+
+/* ============ 布局 ============ */
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+
+/* ============ Header ============ */
+header{padding:56px 0 8px;text-align:left}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  font-size:12px;letter-spacing:.22em;color:var(--accent);
+  font-family:var(--mono);text-transform:uppercase;
+  border:1px solid var(--line);background:var(--accent-soft);
+  padding:5px 12px;border-radius:999px;margin-bottom:20px;
+}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h1{
+  font-size:clamp(30px,5.4vw,54px);line-height:1.08;letter-spacing:-.02em;
+  font-weight:800;max-width:14em;margin-bottom:14px;
+}
+h1 .hl{color:var(--accent)}
+.sub{color:var(--muted);font-size:clamp(14px,2vw,16px);max-width:36em;margin-bottom:28px}
+
+/* ============ 首页 ============ */
+.device-strip{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:36px;
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+}
+.device-strip .chip{
+  border:1px solid var(--line2);background:var(--panel);
+  padding:6px 12px;border-radius:999px;
+}
+.device-strip .chip b{color:var(--text);font-weight:600}
+
+.cta{
+  display:inline-flex;align-items:center;gap:12px;
+  background:var(--accent);color:#06201c;font-weight:700;font-size:16px;
+  border:none;border-radius:var(--r-md);padding:15px 32px;cursor:pointer;
+  box-shadow:0 10px 32px rgba(45,212,191,.22);
+  transition:transform .15s, box-shadow .2s, background .2s;
+}
+.cta:active{transform:scale(.97)}
+.cta:hover{background:#3be0ca;box-shadow:0 14px 40px rgba(45,212,191,.3)}
+.cta .arr{font-size:20px;line-height:1}
+
+.test-intro{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:14px;margin-top:52px;
+}
+.ti{
+  background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-md);
+  padding:20px 22px;
+}
+.ti .ic{
+  width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;margin-bottom:14px;border:1px solid var(--line);background:var(--accent-soft);
+}
+.ti h3{font-size:15px;margin-bottom:6px;letter-spacing:.01em}
+.ti p{font-size:13px;color:var(--muted);line-height:1.7}
+.ti .dur{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:10px;display:block}
+
+/* ============ 测试中 ============ */
+.testing-head{margin-bottom:26px}
+.testing-head h2{font-size:22px;letter-spacing:-.01em}
+.testing-head .tip{color:var(--dim);font-size:13px;margin-top:6px}
+
+.bench-list{display:flex;flex-direction:column;gap:12px}
+.bench{
+  background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-md);
+  padding:16px 18px;display:flex;align-items:center;gap:16px;
+  transition:border-color .3s;
+}
+.bench.running{border-color:var(--accent)}
+.bench.done{border-color:var(--line)}
+.bench .st{
+  width:26px;height:26px;border-radius:50%;flex:0 0 26px;
+  border:2px solid var(--line2);
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--dim);
+  transition:all .3s;
+}
+.bench.running .st{border-color:var(--accent);border-top-color:transparent;animation:spin .8s linear infinite}
+.bench.done .st{border-color:var(--ok);color:var(--ok);background:rgba(52,211,153,.1)}
+.bench.done .st::before{content:"✓"}
+.bench.fail .st{border-color:var(--bad);color:var(--bad)}
+.bench.fail .st::before{content:"!"}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bench .body{flex:1;min-width:0}
+.bench .name{font-size:14px;font-weight:600;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.bench .sub{font-size:12px;color:var(--dim);margin-top:2px}
+.bench .val{font-family:var(--mono);font-size:14px;color:var(--accent);text-align:right;white-space:nowrap}
+.bench.running .val{animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* FPS 迷你曲线 */
+.fps-mini{
+  height:64px;border-radius:var(--r-sm);overflow:hidden;
+  border:1px solid var(--line2);background:#0c1211;margin-top:14px;
+}
+.fps-mini canvas{display:block;width:100%;height:100%}
+
+/* 总进度条 */
+.progress-track{margin-top:22px}
+.progress-bar{height:6px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.progress-fill{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,var(--accent),#5eead4);
+  transition:width .4s ease;
+}
+.progress-label{
+  display:flex;justify-content:space-between;margin-top:10px;
+  font-family:var(--mono);font-size:12px;color:var(--dim);
+}
+
+/* ============ 结果页 ============ */
+.res-top{display:flex;align-items:center;gap:30px;flex-wrap:wrap;margin-bottom:26px}
+.score-wrap{position:relative;flex:0 0 auto}
+.score-ring{transform:rotate(-90deg)}
+.score-ring .bg{stroke:var(--panel2);stroke-width:10}
+.score-ring .fg{
+  stroke:var(--accent);stroke-width:10;stroke-linecap:round;
+  transition:stroke-dashoffset 1.2s cubic-bezier(.22,1,.36,1);
+}
+.score-num{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+}
+.score-num .n{font-size:44px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono);line-height:1}
+.score-num .t{font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.1em}
+.grade{
+  flex:1;min-width:230px;
+}
+.grade-badge{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:26px;font-weight:800;letter-spacing:-.01em;
+  border-radius:var(--r-md);padding:10px 22px;margin-bottom:10px;
+}
+.grade-S{background:rgba(52,211,153,.14);color:var(--ok);border:1px solid rgba(52,211,153,.3)}
+.grade-A{background:rgba(52,211,153,.1);color:var(--ok);border:1px solid rgba(52,211,153,.22)}
+.grade-B{background:rgba(251,191,36,.1);color:var(--warn);border:1px solid rgba(251,191,36,.24)}
+.grade-C{background:rgba(251,146,60,.1);color:#fb923c;border:1px solid rgba(251,146,60,.26)}
+.grade-D{background:rgba(248,113,113,.1);color:var(--bad);border:1px solid rgba(248,113,113,.28)}
+.grade-desc{color:var(--muted);font-size:14px;max-width:34em}
+.grade-weak{margin-top:12px;font-size:13px;color:var(--warn)}
+
+/* 网格卡 */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-2.single{grid-template-columns:1fr}
+@media(max-width:860px){.grid-2{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line2);border-radius:var(--r-lg);padding:22px 24px}
+.panel h3{font-size:13px;letter-spacing:.14em;color:var(--dim);margin-bottom:18px;font-weight:600}
+
+/* 分项分数 */
+.sub-scores{display:flex;flex-direction:column;gap:16px}
+.ss .head{display:flex;justify-content:space-between;margin-bottom:7px;font-size:13px}
+.ss .head .lb{color:var(--muted)}
+.ss .head .v{font-family:var(--mono);font-weight:700}
+.ss .track{height:8px;background:var(--panel2);border-radius:999px;overflow:hidden}
+.ss .fill{height:100%;border-radius:999px;transition:width 1s cubic-bezier(.22,1,.36,1);background:var(--accent)}
+.ss .foot{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* 设备信息 */
+.dev-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px}
+.dev-grid .row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line2);padding-bottom:7px;font-size:13px}
+.dev-grid .row:last-child{border-bottom:none;padding-bottom:0}
+.dev-grid .k{color:var(--dim);white-space:nowrap}
+.dev-grid .v{font-family:var(--mono);font-size:12px;text-align:right;color:var(--text);word-break:break-all}
+
+/* 建议列表 */
+.advice-list{display:flex;flex-direction:column;gap:12px}
+.advice{
+  border:1px solid var(--line2);border-radius:var(--r-md);padding:16px 18px;
+  background:var(--panel2);
+}
+.advice .top{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.advice .tag{
+  font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;letter-spacing:.04em;
+}
+.advice .tag.hi{background:rgba(248,113,113,.14);color:var(--bad);border:1px solid rgba(248,113,113,.3)}
+.advice .tag.mid{background:rgba(251,191,36,.12);color:var(--warn);border:1px solid rgba(251,191,36,.28)}
+.advice .tag.low{background:rgba(45,212,191,.12);color:var(--accent);border:1px solid rgba(45,212,191,.28)}
+.advice h4{font-size:14px}
+.advice p{font-size:13px;color:var(--muted);line-height:1.75}
+.advice code{
+  font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.05);
+  border:1px solid var(--line2);border-radius:5px;padding:1px 6px;color:var(--accent);
+}
+
+/* 操作行 */
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+.btn{
+  display:inline-flex;align-items:center;gap:9px;
+  border-radius:var(--r-md);padding:13px 26px;font-size:14px;font-weight:700;cursor:pointer;
+  transition:transform .15s, opacity .2s;
+}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--accent);color:#06201c;border:none}
+.btn-p:hover{background:#3be0ca}
+.btn-s{background:transparent;color:var(--text);border:1px solid var(--line2)}
+.btn-s:hover{border-color:var(--line);background:var(--panel2)}
+.btn-s .ic{font-size:15px}
+
+/* 报告弹层 */
+#toast{
+  position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);
+  background:#06201c;color:var(--accent);border:1px solid var(--line);
+  padding:11px 22px;border-radius:999px;font-size:13px;font-weight:600;
+  opacity:0;pointer-events:none;transition:all .3s;z-index:50;
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============ Footer ============ */
+footer{border-top:1px solid var(--line2);margin-top:70px;padding:26px 0 40px}
+footer .f-in{max-width:1120px;margin:0 auto;padding:0 20px}
+footer p{font-size:12.5px;color:var(--dim);max-width:60em;line-height:1.8}
+footer .f-title{color:var(--muted);font-size:12px;letter-spacing:.14em;margin-bottom:8px}
+
+/* 动画入场 */
+.reveal{animation:rise .5s cubic-bezier(.22,1,.36,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <span class="eyebrow"><span class="dot"></span>Browser Performance Lab</span>
+  <h1>你的设备,能跑多好的<span class="hl">网页</span>?</h1>
+  <p class="sub">一次约 30 秒的浏览器性能体检。测出设备的运算能力、画面渲染帧率和网页流畅度,给出性能分级,以及针对这台设备的前端定制优化建议。</p>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ 首页 ============ -->
+  <section id="view-home" class="reveal">
+    <div class="device-strip" id="device-strip">
+      <span class="chip">识别设备中...</span>
+    </div>
+    <button class="cta" id="btn-start"><span>开始体检</span><span class="arr">→</span></button>
+
+    <div class="test-intro">
+      <div class="ti">
+        <div class="ic">⚙</div>
+        <h3>运算能力</h3>
+        <p>浮点计算、逻辑运算、数组排序、字符串处理,四项综合测出 CPU 在浏览器里的真实算力。</p>
+        <span class="dur">约 6 秒</span>
+      </div>
+      <div class="ti">
+        <div class="ic">◉</div>
+        <h3>渲染帧率</h3>
+        <p>在 Canvas 中驱动数百个粒子运动,实测每秒渲染帧数(FPS)与帧率稳定性,这是网页是否跟手的关键。</p>
+        <span class="dur">约 4 秒</span>
+      </div>
+      <div class="ti">
+        <div class="ic">▦</div>
+        <h3>页面与网络</h3>
+        <p>DOM 构建速度、本地存储读写,结合设备内存、网络类型与内核数,判断网页卡顿的根源在哪。</p>
+        <span class="dur">约 3 秒</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 测试中 ============ -->
+  <section id="view-testing" class="hidden reveal">
+    <div class="testing-head">
+      <h2>正在体检,请保持本页在前台</h2>
+      <p class="tip">后台运行的标签页会暂停渲染测试,切走会导致结果不准。全程无需操作。</p>
+    </div>
+    <div class="bench-list" id="bench-list"></div>
+    <div class="progress-track">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label"><span id="progress-text">准备中</span><span id="progress-pct">0%</span></div>
+    </div>
+  </section>
+
+  <!-- ============ 结果 ============ -->
+  <section id="view-result" class="hidden reveal">
+    <div class="res-top">
+      <div class="score-wrap">
+        <svg class="score-ring" width="150" height="150" viewBox="0 0 150 150">
+          <circle class="bg" cx="75" cy="75" r="66" fill="none"></circle>
+          <circle class="fg" id="ring-fg" cx="75" cy="75" r="66" fill="none"
+                  stroke-dasharray="414.7" stroke-dashoffset="414.7"></circle>
+        </svg>
+        <div class="score-num">
+          <span class="n" id="score-num">--</span>
+          <span class="t">综合性能分</span>
+        </div>
+      </div>
+      <div class="grade">
+        <span class="grade-badge" id="grade-badge">--</span>
+        <p class="grade-desc" id="grade-desc"></p>
+        <p class="grade-weak" id="grade-weak"></p>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <h3>分项成绩</h3>
+        <div class="sub-scores" id="sub-scores"></div>
+      </div>
+      <div class="panel">
+        <h3>设备画像</h3>
+        <div class="dev-grid" id="dev-grid"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h3>针对这台设备的定制建议</h3>
+      <div class="advice-list" id="advice-list"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-p" id="btn-copy">复制体检报告</button>
+      <button class="btn btn-s" id="btn-retest"><span class="ic">↻</span>重新测试</button>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="f-in">
+    <p class="f-title">关于测试</p>
+    <p>测试全部在本机浏览器内完成,数据不上传、不留存,请放心使用。分数为相对参考值(以中端桌面浏览器为 100 基准),受当前系统负载、后台应用与浏览器版本影响,建议连续测两次取更准的结果。结果仅用于评估设备在浏览器中的表现,不代表设备整体硬件水平。</p>
+  </div>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= 工具函数 ================= */
+var $ = function(id){ return document.getElementById(id); };
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function median(arr){
+  var a = arr.slice().sort(function(x,y){return x-y;});
+  var m = a.length >> 1;
+  return a.length % 2 ? a[m] : (a[m-1]+a[m])/2;
+}
+function geoMean(arr){
+  var p = 1, n = 0;
+  for(var i=0;i<arr.length;i++){ if(arr[i]>0){ p *= arr[i]; n++; } }
+  return n ? Math.pow(p, 1/n) : 0;
+}
+function fmtMs(ms){ return ms>=1000 ? (ms/1000).toFixed(1)+"s" : Math.round(ms)+"ms"; }
+function nextFrame(){ return new Promise(function(r){ requestAnimationFrame(function(){ r(); }); }); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+/* ================= 设备画像 ================= */
+var D = {};
+function deviceProfile(){
+  var ua = navigator.userAgent;
+  var p = {
+    mobile: /Mobi|Android|iPhone|iPad|iPod/i.test(ua),
+    tablet: /iPad|Android(?!.*Mobile)|Tablet/i.test(ua),
+  };
+  if(p.tablet){ D.device = "平板"; }
+  else if(p.mobile){ D.device = "手机"; }
+  else { D.device = "电脑"; }
+
+  // 浏览器
+  var b = "未知浏览器";
+  if(/Edg\//.test(ua)) b = "Edge";
+  else if(/Chrome\//.test(ua)) b = "Chrome";
+  else if(/Firefox\//.test(ua)) b = "Firefox";
+  else if(/Safari\//.test(ua)) b = "Safari";
+  else if(/MicroMessenger/i.test(ua)) b = "微信内置浏览器";
+  D.browser = b;
+
+  D.cores = navigator.hardwareConcurrency || "未知";
+  D.memory = (typeof navigator.deviceMemory === "number") ? navigator.deviceMemory + " GB" : "未暴露";
+  D.screen = screen.width + "×" + screen.height;
+  D.dpr = window.devicePixelRatio ? window.devicePixelRatio.toFixed(1) + "x" : "未知";
+  D.lang = navigator.language || "未知";
+  D.platform = (navigator.userAgentData && navigator.userAgentData.platform)
+    ? navigator.userAgentData.platform : (navigator.platform || "未知");
+
+  // 网络
+  var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if(conn){
+    var map = {"slow-2g":"极慢 2G","2g":"2G","3g":"3G","4g":"4G"};
+    D.netType = map[conn.effectiveType] || conn.effectiveType || "未知";
+    D.downlink = conn.downlink ? conn.downlink.toFixed(1) + " Mbps" : null;
+    D.rtt = conn.rtt ? conn.rtt + " ms" : null;
+  } else {
+    D.netType = "未知";
+    D.downlink = null;
+    D.rtt = null;
+  }
+  return D;
+}
+
+function renderDeviceStrip(){
+  var el = $("device-strip");
+  var s = D.screen + " · " + D.browser + " · " + D.cores + " 核";
+  if(D.memory && D.memory !== "未暴露") s += " · " + D.memory;
+  s += " · " + D.netType;
+  el.innerHTML = '<span class="chip">识别设备</span><span class="chip"><b>' + D.device + '</b></span><span class="chip">' + s + '</span>';
+}
+
+/* ================= 基准锚点(中端桌面 Chrome 参考,分数=锚点耗时/实测耗时×100) ================= */
+var ANCHOR = {
+  fp: 30,      // 100 万次混合浮点运算,中端桌面约 30ms
+  prime: 55,   // 5 轮素数筛(上限 200000),约 55ms
+  sort: 40,    // 5 轮 10 万元素排序,约 40ms
+  str: 25,     // 字符串拼接与正则,约 25ms
+  dom: 90,     // 创建+移除 8000 节点,约 90ms
+};
+
+/* ================= 测试项定义 ================= */
+var TESTS = [
+  { id:"cpu",    name:"运算能力",  sub:"浮点 · 素数 · 排序 · 字符串" },
+  { id:"render", name:"渲染帧率",  sub:"Canvas 粒子动画实测 FPS" },
+  { id:"dom",    name:"DOM 构建",  sub:"节点创建与移除速度" },
+  { id:"storage",name:"本地存储",  sub:"localStorage 读写" },
+  { id:"net",    name:"网络画像",  sub:"连接类型 · 带宽 · 时延" },
+];
+
+/* ================= 单项测试实现 ================= */
+function benchFP(){
+  var t0 = performance.now();
+  var s = 0;
+  for(var i=0;i<1000000;i++){
+    var x = Math.sin(i*0.001) + Math.cos(i*0.0007) * Math.sqrt(i % 1000 + 1);
+    s += x - Math.floor(x);
+  }
+  if(s === -1) console.log("fp"); // 防优化
+  return performance.now() - t0;
+}
+function benchPrime(){
+  var t0 = performance.now();
+  for(var round=0; round<5; round++){
+    var N = 200000, sieve = new Uint8Array(N+1), cnt = 0;
+    for(var i=2;i<=N;i++){
+      if(!sieve[i]){
+        cnt++;
+        if(i*i <= N){ for(var j=i*i;j<=N;j+=i) sieve[j]=1; }
+      }
+    }
+    if(cnt < 0) console.log("prime");
+  }
+  return performance.now() - t0;
+}
+function benchSort(){
+  var t0 = performance.now();
+  for(var round=0; round<5; round++){
+    var arr = new Array(100000);
+    for(var i=0;i<100000;i++) arr[i] = Math.random();
+    arr.sort(function(a,b){return a-b;});
+    if(arr[0] < -1) console.log("sort");
+  }
+  return performance.now() - t0;
+}
+function benchStr(){
+  var t0 = performance.now();
+  var s = "";
+  for(var i=0;i<5000;i++){ s += "测试字符串" + i + "#"; }
+  var r = s.replace(/[0-9]+/g, "X").split("#").length;
+  if(r < 0) console.log("str");
+  return performance.now() - t0;
+}
+
+async function runCPU(onProgress){
+  // 每项 3 轮取中位数,降低系统调度抖动影响
+  var rounds = 3;
+  var f = [], p = [], so = [], st = [];
+  for(var r=0; r<rounds; r++){
+    onProgress("浮点第 "+(r+1)+"/"+rounds+" 轮");
+    f.push(benchFP());
+    await nextFrame();
+    onProgress("素数筛第 "+(r+1)+"/"+rounds+" 轮");
+    p.push(benchPrime());
+    await nextFrame();
+    onProgress("排序第 "+(r+1)+"/"+rounds+" 轮");
+    so.push(benchSort());
+    await nextFrame();
+    onProgress("字符串第 "+(r+1)+"/"+rounds+" 轮");
+    st.push(benchStr());
+    await nextFrame();
+  }
+  var med = { fp:median(f), prime:median(p), sort:median(so), str:median(st) };
+  var scores = {
+    fp:    clamp(ANCHOR.fp/med.fp*100, 1, 400),
+    prime: clamp(ANCHOR.prime/med.prime*100, 1, 400),
+    sort:  clamp(ANCHOR.sort/med.sort*100, 1, 400),
+    str:   clamp(ANCHOR.str/med.str*100, 1, 400),
+  };
+  return {
+    score: Math.round(geoMean([scores.fp, scores.prime, scores.sort, scores.str])),
+    detail: {
+      "浮点运算": med.fp,
+      "素数筛": med.prime,
+      "数组排序": med.sort,
+      "字符串处理": med.str,
+    }
+  };
+}
+
+async function runRender(onProgress){
+  var canvas = document.createElement("canvas");
+  canvas.width = Math.min(600, Math.max(320, window.innerWidth*0.7));
+  canvas.height = 240;
+  var ctx = canvas.getContext("2d");
+  if(!ctx) return { score:null, detail:{ "FPS":"不支持 Canvas" } };
+
+  var N = 260; // 粒子数
+  var particles = new Array(N);
+  for(var i=0;i<N;i++){
+    particles[i] = {
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height,
+      vx: (Math.random()-0.5)*3.2,
+      vy: (Math.random()-0.5)*3.2,
+      r: 1.5+Math.random()*3,
+    };
+  }
+  var frameTimes = [];
+  var running = true;
+  var last = performance.now();
+  var duration = 3200; // 采样 3.2 秒
+
+  function tick(now){
+    if(!running) return;
+    frameTimes.push(now - last);
+    last = now;
+    // 绘制
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(var i=0;i<N;i++){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy;
+      if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = "#2dd4bf";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+    if(now - t0 < duration){ requestAnimationFrame(tick); }
+    else { running = false; }
+  }
+  var t0 = performance.now();
+  requestAnimationFrame(tick);
+
+  // 等待测试完成,期间低频更新进度文案
+  return new Promise(function(resolve){
+    var iv = setInterval(function(){
+      onProgress("已采样 " + frameTimes.length + " 帧");
+    }, 300);
+    setTimeout(function(){
+      running = false;
+      clearInterval(iv);
+      var t = frameTimes.slice(1); // 丢弃首帧(冷启动)
+      var avg = t.length ? t.reduce(function(a,b){return a+b;},0)/t.length : 0;
+      var fps = avg > 0 ? 1000/avg : 0;
+      var sorted = t.slice().sort(function(a,b){return a-b;});
+      var p95 = sorted[Math.floor(sorted.length*0.95)] || avg;
+      // 渲染分:帧率占 80%,稳定性(帧时间抖动)占 20%
+      var fpsScore = clamp(fps/60, 0, 1.2) * 80;
+      var smooth = 1 - clamp((p95-20)/120, 0, 0.8);
+      var score = Math.round(clamp(fpsScore + smooth*20, 0, 100));
+      resolve({
+        score: score,
+        detail: {
+          "平均帧率": fps.toFixed(1)+" FPS",
+          "95% 帧耗时": p95.toFixed(1)+" ms",
+          "采样帧数": t.length+" 帧",
+        },
+        fpsData: t,
+      });
+    }, duration + 350);
+  });
+}
+
+function benchDOM(){
+  var t0 = performance.now();
+  var wrap = document.createElement("div");
+  document.body.appendChild(wrap);
+  for(var i=0;i<8000;i++){
+    var d = document.createElement("div");
+    d.className = "bt-" + (i % 3);
+    d.textContent = "x";
+    wrap.appendChild(d);
+  }
+  var n = wrap.children.length;
+  wrap.innerHTML = "";
+  document.body.removeChild(wrap);
+  return { ms: performance.now() - t0, n: n };
+}
+async function runDOM(){
+  var samples = [];
+  for(var r=0;r<3;r++){
+    await nextFrame();
+    samples.push(benchDOM().ms);
+  }
+  var med = median(samples);
+  return {
+    score: Math.round(clamp(ANCHOR.dom/med*100, 1, 400)),
+    detail: { "8000 节点构建": fmtMs(med) },
+  };
+}
+
+function runStorage(){
+  var t0, ms;
+  try{
+    t0 = performance.now();
+    for(var i=0;i<200;i++){
+      localStorage.setItem("bt_"+i, "性能测试数据负载 " + i + " padding padding padding");
+    }
+    var chk = 0;
+    for(var j=0;j<200;j++){ chk += localStorage.getItem("bt_"+j).length; }
+    ms = performance.now() - t0;
+    // 清理
+    for(var k=0;k<200;k++){ localStorage.removeItem("bt_"+k); }
+    var rate = 200 / (ms/1000);
+    return { score: null, detail: { "200 条读写": fmtMs(ms), "吞吐": rate.toFixed(0)+" 条/s" } };
+  }catch(e){
+    return { score: null, detail: { "状态":"不可用(隐私模式)" } };
+  }
+}
+
+/* ================= 主流程 ================= */
+var state = {
+  cpu:null, render:null, dom:null, storage:null, net:null,
+};
+
+function buildBenchListUI(){
+  var el = $("bench-list");
+  el.innerHTML = TESTS.map(function(t){
+    return '<div class="bench" id="b-'+t.id+'">'
+      + '<div class="st"></div>'
+      + '<div class="body"><div class="name">'+t.name+'</div><div class="sub" id="bs-'+t.id+'">'+t.sub+'</div></div>'
+      + '<div class="val" id="bv-'+t.id+'">等待</div>'
+      + '</div>';
+  }).join("");
+}
+function setBench(id, phase, valText, subText){
+  var row = $("b-"+id);
+  if(row){ row.className = "bench " + phase; }
+  var v = $("bv-"+id);
+  if(v && valText !== undefined) v.textContent = valText;
+  var s = $("bs-"+id);
+  if(s && subText) s.textContent = subText;
+}
+function setProgress(pct, text){
+  $("progress-fill").style.width = pct + "%";
+  $("progress-pct").textContent = pct + "%";
+  if(text) $("progress-text").textContent = text;
+}
+
+async function runAll(){
+  // 启动
+  $("view-home").classList.add("hidden");
+  $("view-testing").classList.remove("hidden");
+  buildBenchListUI();
+  var total = 100, done = 0;
+
+  // 1. CPU
+  setBench("cpu","running","进行中");
+  var cpu = await runCPU(function(txt){ setBench("cpu","running", txt); });
+  state.cpu = cpu;
+  setBench("cpu","done", cpu.score + " 分", "浮点 "+fmtMs(cpu.detail["浮点运算"])+" · 排序 "+fmtMs(cpu.detail["数组排序"]));
+  done += 30; setProgress(done, "运算能力完成"); await sleep(200);
+
+  // 2. 渲染
+  setBench("render","running","进行中");
+  var render = await runRender(function(txt){ setBench("render","running", txt); });
+  state.render = render;
+  var fpsVal = render.detail["平均帧率"];
+  setBench("render","done", render.score+" 分", "平均 "+fpsVal+" · "+(render.detail["95% 帧耗时"]));
+  done += 25; setProgress(done, "渲染帧率完成"); await sleep(200);
+
+  // 3. DOM
+  setBench("dom","running","进行中");
+  var dom = await runDOM();
+  state.dom = dom;
+  setBench("dom","done", dom.score+" 分", dom.detail["8000 节点构建"]+" / 3 轮");
+  done += 15; setProgress(done, "DOM 构建完成"); await sleep(200);
+
+  // 4. 存储
+  setBench("storage","running","进行中");
+  var st = await runStorage();
+  state.storage = st;
+  setBench("storage","done", st.detail["状态"] ? "已测" : "已测", st.detail["200 条读写"] || st.detail["状态"]);
+  done += 8; setProgress(done, "本地存储完成"); await sleep(150);
+
+  // 5. 网络画像
+  setBench("net","running","进行中");
+  var netTxt = D.downlink ? D.downlink + " · RTT " + D.rtt : "由连接信息判定";
+  state.net = { detail: { "连接类型": D.netType, "带宽": D.downlink || "未暴露", "时延": D.rtt || "未暴露" } };
+  setBench("net","done", D.netType, netTxt);
+  done += 7; setProgress(done, "网络画像完成"); await sleep(300);
+
+  setProgress(100, "汇总结果");
+  await sleep(400);
+  showResult();
+}
+
+/* ================= 评分与分级 ================= */
+function computeTotal(){
+  var items = [];
+  if(state.cpu && state.cpu.score) items.push({v:state.cpu.score, w:0.4});
+  if(state.render && state.render.score) items.push({v:state.render.score, w:0.4});
+  if(state.dom && state.dom.score) items.push({v:state.dom.score, w:0.2});
+  if(!items.length) return 0;
+  var wsum = 0, acc = 0;
+  for(var i=0;i<items.length;i++){ acc += items[i].v*items[i].w; wsum += items[i].w; }
+  return Math.round(acc/wsum);
+}
+function gradeOf(score){
+  if(score >= 90) return {g:"S", label:"旗舰级", desc:"性能非常强。可以承载 3D、粒子特效、复杂动效和重交互页面,用户几乎感受不到卡顿。"};
+  if(score >= 75) return {g:"A", label:"流畅级", desc:"性能优秀。支持较丰富的动画与交互,正常网页都能流畅运行,复杂动效需适度控制。"};
+  if(score >= 60) return {g:"B", label:"均衡级", desc:"性能够用。适合常规页面与轻量动画,大量粒子、模糊滤镜等重特效会开始掉帧。"};
+  if(score >= 45) return {g:"C", label:"入门级", desc:"性能偏弱。滚动、动画容易卡顿,需要做针对性优化:减少动画、压缩资源、精简布局。"};
+  return {g:"D", label:"基础级", desc:"性能紧张。卡顿会比较明显,建议按基础版规格定制:静态化页面、禁用重特效、极简 DOM 结构。"};
+}
+
+/* ================= 建议引擎 ================= */
+function buildAdvice(){
+  var adv = [];
+  var total = computeTotal();
+  var g = gradeOf(total);
+  var push = function(pri, title, body){ adv.push({pri:pri, title:title, body:body}); };
+
+  // 一、按综合档位
+  if(g.g === "S"){ push("low","保持当前规格", "设备性能充裕,可放心使用 3D 变换、粒子系统、复杂过渡动画。建议同时做好降级方案,照顾低端设备访问。"); }
+  else if(g.g === "A"){ push("low","可承载中重度动效", "动画与交互可以放开一些,但页面级重型特效(全屏粒子、WebGL 场景)建议提供开关或检测降级。"); }
+  else if(g.g === "B"){ push("mid","控制动画密度", "同一屏动画元素建议控制在 8 个以内,优先用 <code>transform</code> 和 <code>opacity</code> 实现动画,避免频繁触发布局重排。"); }
+  else if(g.g === "C"){ push("hi","按轻量版定制", "建议按轻量版规格开发:去掉长滚动视差、模糊滤镜、大面积渐变动画,图片懒加载,列表虚拟滚动,优先保证滚动跟手。"); }
+  else { push("hi","按基础版定制", "建议采用基础版:静态内容优先、禁用动效、极小 DOM、资源内联减少请求,把流畅度放在第一位。"); }
+
+  // 二、按弱项
+  if(state.render && state.render.score !== null && state.render.score < 55){
+    push("hi","渲染是瓶颈:减特效", "画面渲染帧率偏低("+state.render.detail["平均帧率"]+")。这是卡顿的主要来源:减少同屏动画元素、避免 <code>backdrop-filter</code> 大面积模糊、用 GPU 加速的 <code>transform</code> 动画替代布局动画。");
+  }
+  if(state.cpu && state.cpu.score < 50){
+    push("hi","CPU 偏弱:省计算", "运算能力较弱,JS 重逻辑(加密、大量数据处理、实时计算)会明显拖慢页面。建议把重计算放服务端,前端只做展示;长任务用 <code>setTimeout</code> 切片或 Web Worker 分担。");
+  }
+  if(state.dom && state.dom.score < 60){
+    push("mid","DOM 偏慢:精简结构", "DOM 构建速度较慢,建议减少页面节点数量、避免深层嵌套,长列表用虚拟滚动,重复区域用 <code>DocumentFragment</code> 批量插入。");
+  }
+  if(D.netType === "4G" || D.netType === "3G" || D.netType === "2G" || D.netType === "极慢 2G"){
+    push("mid","移动网络:压缩体积", "当前为"+D.netType+"网络,页面体积建议控制在 1MB 以内:图片用 WebP/AVIF 压缩、开启 CDN 与缓存、首屏只加载关键资源,用骨架屏占位。");
+  }
+  if(typeof navigator.deviceMemory === "number" && navigator.deviceMemory <= 4){
+    push("mid","内存偏小:控占用", "设备内存约 "+D.memory+",避免一次性渲染超大列表、长时间驻留的全局变量与未清理的事件监听,图片按需加载并及时释放。");
+  }
+  if(D.device === "手机"){
+    push("low","手机端注意触控", "手机端建议:点击目标不小于 44px、避免 300ms 点击延迟、滚动容器用 <code>overflow-y:auto</code> 配合 <code>-webkit-overflow-scrolling:touch</code>、减少 <code>position:fixed</code> 元素数量。");
+  }
+  if(D.browser === "微信内置浏览器"){
+    push("mid","微信浏览器适配", "微信内置浏览器内核较旧,建议避免使用较新的 CSS 特性,重要功能做兼容降级,并主动提示用户用系统浏览器打开以获得最佳体验。");
+  }
+
+  // 保底
+  if(!adv.length){ push("low","一切正常", "这台设备运行网页很轻松,保持常规开发标准即可。"); }
+  return adv;
+}
+
+/* ================= 结果渲染 ================= */
+function showResult(){
+  var total = computeTotal();
+  var g = gradeOf(total);
+
+  $("view-testing").classList.add("hidden");
+  $("view-result").classList.remove("hidden");
+
+  // 评分环
+  var C = 2*Math.PI*66;
+  var numEl = $("score-num");
+  numEl.textContent = total;
+  setTimeout(function(){
+    $("ring-fg").style.strokeDashoffset = C * (1 - total/100);
+  }, 80);
+
+  // 档位
+  var badge = $("grade-badge");
+  badge.className = "grade-badge grade-" + g.g;
+  badge.textContent = g.label + " · " + g.g + " 级";
+  $("grade-desc").textContent = g.desc;
+
+  // 弱项提示
+  var weak = [];
+  if(state.render && state.render.score !== null && state.render.score < 60) weak.push("渲染帧率偏低");
+  if(state.cpu && state.cpu.score < 60) weak.push("运算能力偏弱");
+  if(state.dom && state.dom.score < 60) weak.push("DOM 构建偏慢");
+  $("grade-weak").textContent = weak.length ? "提示:检测到" + weak.join("、") + ",对应建议已附在下方。" : "";
+
+  // 分项
+  var subs = [
+    {lb:"运算能力 CPU", v:state.cpu && state.cpu.score, note:"相对中端桌面为 100"},
+    {lb:"渲染帧率", v:state.render && state.render.score, note:state.render ? state.render.detail["平均帧率"] : "未测"},
+    {lb:"DOM 构建", v:state.dom && state.dom.score, note:state.dom ? state.dom.detail["8000 节点构建"] : "未测"},
+  ];
+  $("sub-scores").innerHTML = subs.map(function(s){
+    var v = s.v || 0;
+    var color = v>=75?"var(--ok)":(v>=55?"var(--warn)":"var(--bad)");
+    return '<div class="ss">'
+      + '<div class="head"><span class="lb">'+s.lb+'</span><span class="v" style="color:'+color+'">'+(s.v===null?"--":v)+'</span></div>'
+      + '<div class="track"><div class="fill" data-w="'+Math.min(100,v)+'" style="background:'+color+'"></div></div>'
+      + '<div class="foot"><span>'+s.note+'</span></div>'
+      + '</div>';
+  }).join("");
+  setTimeout(function(){
+    var fills = document.querySelectorAll("#sub-scores .fill");
+    for(var i=0;i<fills.length;i++){ fills[i].style.width = fills[i].getAttribute("data-w") + "%"; }
+  }, 100);
+
+  // 设备画像
+  var rows = [
+    ["设备类型", D.device], ["浏览器", D.browser], ["平台", D.platform],
+    ["屏幕", D.screen], ["缩放比", D.dpr], ["CPU 内核", D.cores],
+    ["内存", D.memory], ["连接", D.netType],
+  ];
+  if(D.downlink) rows.push(["下行带宽", D.downlink]);
+  if(D.rtt) rows.push(["网络时延", D.rtt]);
+  $("dev-grid").innerHTML = rows.map(function(r){
+    return '<div class="row"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>';
+  }).join("");
+
+  // 建议
+  var priName = {hi:"高", mid:"中", low:"低"};
+  var priCls = {hi:"hi", mid:"mid", low:"low"};
+  var adv = buildAdvice();
+  $("advice-list").innerHTML = adv.map(function(a){
+    return '<div class="advice">'
+      + '<div class="top"><span class="tag '+priCls[a.pri]+'">优先级 '+priName[a.pri]+'</span><h4>'+a.title+'</h4></div>'
+      + '<p>'+a.body+'</p>'
+      + '</div>';
+  }).join("");
+
+  // 滚动到结果顶部
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ================= 报告生成 ================= */
+function buildReport(){
+  var total = computeTotal();
+  var g = gradeOf(total);
+  var L = [];
+  L.push("设备性能体检报告");
+  L.push("测试时间: " + new Date().toLocaleString("zh-CN"));
+  L.push("");
+  L.push("综合性能分: " + total + " / 100");
+  L.push("设备分级: " + g.label + "(" + g.g + " 级)");
+  L.push("");
+  L.push("设备画像");
+  L.push("  设备类型: " + D.device);
+  L.push("  浏览器: " + D.browser);
+  L.push("  平台: " + D.platform);
+  L.push("  屏幕: " + D.screen + " @ " + D.dpr);
+  L.push("  CPU 内核: " + D.cores);
+  L.push("  内存: " + D.memory);
+  L.push("  网络: " + D.netType + (D.downlink ? " / " + D.downlink : "") + (D.rtt ? " / RTT " + D.rtt : ""));
+  L.push("");
+  L.push("分项成绩");
+  if(state.cpu)  L.push("  运算能力 CPU: " + state.cpu.score + " 分");
+  if(state.render) L.push("  渲染帧率: " + state.render.score + " 分 (" + state.render.detail["平均帧率"] + ")");
+  if(state.dom)  L.push("  DOM 构建: " + state.dom.score + " 分 (" + state.dom.detail["8000 节点构建"] + ")");
+  if(state.storage) L.push("  本地存储: " + (state.storage.detail["200 条读写"] || state.storage.detail["状态"]));
+  L.push("");
+  L.push("建议摘要: " + g.desc);
+  return L.join("\n");
+}
+
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(function(){ t.classList.remove("show"); }, 2200);
+}
+
+/* ================= 事件绑定 ================= */
+function init(){
+  deviceProfile();
+  renderDeviceStrip();
+  var homeItems = document.querySelectorAll("#view-home .ti, #view-home .cta");
+  var i = 0;
+  var iv = setInterval(function(){
+    if(i < homeItems.length){ homeItems[i].classList.add("reveal"); i++; }
+    else clearInterval(iv);
+  }, 120);
+
+  $("btn-start").addEventListener("click", function(){ runAll(); });
+  $("btn-retest").addEventListener("click", function(){
+    $("view-result").classList.add("hidden");
+    $("view-home").classList.remove("hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+  $("btn-copy").addEventListener("click", function(){
+    var txt = buildReport();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ toast("体检报告已复制,可粘贴发送给开发者"); },
+        function(){ fallbackCopy(txt); });
+    } else { fallbackCopy(txt); }
+  });
+}
+function fallbackCopy(text){
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); toast("体检报告已复制,可粘贴发送给开发者"); }
+  catch(e){ toast("复制失败,请手动截图报告"); }
+  document.body.removeChild(ta);
+}
+
+document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
