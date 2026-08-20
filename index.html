@@ -889,33 +889,53 @@ function showResult(){
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
-/* ================= 报告生成 ================= */
+/* ================= 报告生成(AI 友好结构化格式) ================= */
+function stripTags(html){
+  return html.replace(/<code>/g, "`").replace(/<\/code>/g, "`").replace(/<[^>]+>/g, "");
+}
 function buildReport(){
   var total = computeTotal();
   var g = gradeOf(total);
+  var adv = buildAdvice();
+  var priMap = {hi:"[高]", mid:"[中]", low:"[低]"};
+  var weak = [];
+  if(state.render && state.render.score !== null && state.render.score < 60) weak.push("渲染帧率");
+  if(state.cpu && state.cpu.score < 60) weak.push("运算能力");
+  if(state.dom && state.dom.score < 60) weak.push("DOM 构建");
   var L = [];
-  L.push("设备性能体检报告");
-  L.push("测试时间: " + new Date().toLocaleString("zh-CN"));
-  L.push("");
-  L.push("综合性能分: " + total + " / 100");
-  L.push("设备分级: " + g.label + "(" + g.g + " 级)");
-  L.push("");
-  L.push("设备画像");
-  L.push("  设备类型: " + D.device);
-  L.push("  浏览器: " + D.browser);
-  L.push("  平台: " + D.platform);
-  L.push("  屏幕: " + D.screen + " @ " + D.dpr);
-  L.push("  CPU 内核: " + D.cores);
-  L.push("  内存: " + D.memory);
-  L.push("  网络: " + D.netType + (D.downlink ? " / " + D.downlink : "") + (D.rtt ? " / RTT " + D.rtt : ""));
-  L.push("");
-  L.push("分项成绩");
-  if(state.cpu)  L.push("  运算能力 CPU: " + state.cpu.score + " 分");
-  if(state.render) L.push("  渲染帧率: " + state.render.score + " 分 (" + state.render.detail["平均帧率"] + ")");
-  if(state.dom)  L.push("  DOM 构建: " + state.dom.score + " 分 (" + state.dom.detail["8000 节点构建"] + ")");
-  if(state.storage) L.push("  本地存储: " + (state.storage.detail["200 条读写"] || state.storage.detail["状态"]));
-  L.push("");
-  L.push("建议摘要: " + g.desc);
+  L.push("【设备性能报告】");
+  L.push("版本:v1 · 生成时间:" + new Date().toLocaleString("zh-CN"));
+  L.push("================================");
+  L.push("[综合]");
+  L.push("评分:" + total + "/100");
+  L.push("分级:" + g.g + " 级 · " + g.label);
+  L.push("弱项:" + (weak.length ? weak.join("、") : "无"));
+  L.push("================================");
+  L.push("[设备]");
+  L.push("类型:" + D.device);
+  L.push("浏览器:" + D.browser);
+  L.push("平台:" + D.platform);
+  L.push("屏幕:" + D.screen + " @" + D.dpr);
+  L.push("CPU内核:" + D.cores);
+  L.push("内存:" + D.memory);
+  L.push("网络:" + D.netType + (D.downlink ? " / 下行" + D.downlink : "") + (D.rtt ? " / RTT " + D.rtt : ""));
+  L.push("================================");
+  L.push("[分项]");
+  if(state.cpu) L.push("CPU运算:" + state.cpu.score + "分");
+  if(state.render) L.push("渲染帧率:" + state.render.score + "分(" + state.render.detail["平均帧率"] + ")");
+  if(state.dom) L.push("DOM构建:" + state.dom.score + "分(" + state.dom.detail["8000 节点构建"] + ")");
+  if(state.storage) L.push("本地存储:" + (state.storage.detail["200 条读写"] || state.storage.detail["状态"]));
+  L.push("================================");
+  L.push("[建议]");
+  if(adv.length){
+    for(var i=0;i<adv.length;i++){
+      L.push(priMap[adv[i].pri] + " " + (i+1) + ". " + adv[i].title + ":" + stripTags(adv[i].body));
+    }
+  } else {
+    L.push("无");
+  }
+  L.push("================================");
+  L.push("说明:评分为相对值,中端桌面浏览器=100,请按弱项与建议定制优化。");
   return L.join("\n");
 }
 
